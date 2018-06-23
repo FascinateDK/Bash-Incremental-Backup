@@ -1,2 +1,2 @@
 # Bash-Incremental-Backup
-School incremental backup script
+School incremental backup script, test!
