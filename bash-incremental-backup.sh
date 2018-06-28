@@ -1,16 +1,19 @@
 #!/bin/bash
 
 # Configuration variables
-source="${2:-/path/to/source}"
-destination="${4:-/path/to/target}"
-retention=${6}
-
+source="${2##*:}"
+destination="${4##*:}"
 logDir="${destination}/logs"
-logFile="${destination}/logs/backup_$(basename "$source")_$(date -Id)_$(date +%H-%M-%S).log"
+logFile="${destination}/logs/backup_$(basename "$source").log"
 dataFile="${destination}/data/$(basename $source)"
+remote=
 
-remote=False
-timeout=1800
+if [ -z ${5} ] || [ ${5} != "--retention" ]
+then
+  retention=7
+else
+  retention=${6}
+fi
 
 # Functions
 pushLog()
@@ -27,7 +30,7 @@ pushHelper()
   echo "--retention : number of days to keep bakcups"
 }
 
-if [ ${1} != "--source" ] || [ ${3} != "--destination" ] || [ ${5} != "--retention" ] || [ ! -d ${2} ]
+if [ ${1} != "--source" ] || [ ${3} != "--destination" ] || [ ! -d ${2} ]
   then
   echo "Something went wrong..."
   pushHelper
@@ -39,8 +42,14 @@ else
   touch $logFile
 
   # Removing older backup's folder if retention changed
-  #if [ ${dataFile}/backup.$retention+1 ]
-  echo ${dataFile}/backup.$retention+1
+  if [ $retention -lt 9 ]
+  then
+    del=$(($retention+1))
+    rm -rf ${dataFile}/backup.1[0-9]
+    rm -rf ${dataFile}/backup.[${del}-9]
+  else
+    rm -rf ${dataFile}/backup.1[0-9]
+  fi
 
   # Backup folder creation according to retention
   for (( i=0; i<=${retention}; i++ ))
@@ -68,13 +77,14 @@ else
   done
 
   # Incremental backup execution
-  #/usr/bin/rsync -achv --no-o --delete --safe-links --log-file=${logFile} --link-dest=$dataFile/backup.2 $source $dataFile/backup.1/
+  /usr/bin/rsync -e ssh -achv --no-o --delete --safe-links --log-file=${logFile} --link-dest=$dataFile/backup.2 $source $dataFile/backup.1/
 
   # Check success
   if [ "${?}" -eq "0" ]
   then
-  	pushLog "\n[$(date -Is)] Backup completed successfully\n"
+  	pushLog "\n[$(date -Is)] Backup completed successfully : $(date -Id) $(date +%H:%M:%S)\n"
   else
-  	pushLog "\n[$(date -Is)] Backup failed, try again later\n"
+  	pushLog "\n[$(date -Is)] Backup failed, try again later : $(date -Id) $(date +%H:%M:%S)\n"
   fi
+    savelog -q -m 640 -c ${retention} -l ${logFile}
 fi
