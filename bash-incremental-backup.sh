@@ -38,17 +38,24 @@ else
   mkdir -p ${logDir}
   touch $logFile
 
+  # Removing older backup's folder if retention changed
+  #if [ ${dataFile}/backup.$retention+1 ]
+  echo ${dataFile}/backup.$retention+1
+
+  # Backup folder creation according to retention
   for (( i=0; i<=${retention}; i++ ))
   do
      mkdir -p ${dataFile}/backup.${i}
   done
 
+  # Pushing log into log's file
   pushLog "Starting rsync service at : $(date -Id) $(date +%H:%M:%S) \n"
   pushLog "Configuration :"
   pushLog "Source : ${source}"
   pushLog "Destination : ${destination}"
   pushLog "Remote mode : ${remote}"
 
+  # Removing last day folder according to retention
   /bin/rm -rf $dataFile/backup.${retention}
 
   for (( i=1; i<=$((retention-1)); i++ ))
@@ -60,7 +67,8 @@ else
      mv $dataFile/backup.${toMove} $dataFile/backup.${count}
   done
 
-  /usr/bin/rsync -achv --no-o --delete --safe-links --log-file=${logFile} --link-dest=$dataFile/backup.2 $source $dataFile/backup.1/
+  # Incremental backup execution
+  #/usr/bin/rsync -achv --no-o --delete --safe-links --log-file=${logFile} --link-dest=$dataFile/backup.2 $source $dataFile/backup.1/
 
   # Check success
   if [ "${?}" -eq "0" ]
